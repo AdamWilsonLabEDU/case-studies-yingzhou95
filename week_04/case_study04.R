@@ -2,6 +2,7 @@
 #install.packages("nycflights13")
 library(tidyverse)
 library(nycflights13)
+library(maps)
 
 # look at contents of each table in the dataset
 view(airlines)
@@ -16,13 +17,12 @@ farthest_airport <- flights %>%
   arrange(desc(distance)) %>%
   left_join(airports, by = c("dest" = "faa" )) %>%
   slice(1) %>%
-  select(name)
+  select(name) %>%
+  mutate(destName = as.character(name))
 
 view(farthest_airport)
 
-
-
-
-
+## `summarise()` has grouped output by 'name', 'lat'. You can override using the
+## `.groups` argument.
 
 
