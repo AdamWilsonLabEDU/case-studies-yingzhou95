@@ -53,6 +53,15 @@ ggplot() +
 install.packages("leaflet")
 library(leaflet)
 
+# Convert border_area to a format compatible with leaflet
+border_area_leaflet <- st_transform(border_area, crs = 4326)
+
+leaflet(border_area_leaflet) %>%
+  addTiles(urlTemplate = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png") %>%
+  addPolygons(color = "black",
+              weight = 1,
+              fillColor = "red",
+              fillOpacity = 0.5)
 
 
 
