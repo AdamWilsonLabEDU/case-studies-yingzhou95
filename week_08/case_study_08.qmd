@@ -2,9 +2,6 @@
 title: "Carbon Dioxide Concentrations at Mona Loa Observatory"
 author: "Ying Zhou"
 html: default
-  github: default
-  pptx: default
-  docx: default
 ---
 
 ## Annual Mean Carbon Dioxide Concentrations 1959-Present
@@ -29,6 +26,7 @@ ggplot(CO2mean, aes(Year, CO2_mean)) +
 library(readr)
 library(dplyr)
 library(knitr)
+library(kableExtra)
 
 url <- "ftp://aftp.cmdl.noaa.gov/products/trends/co2/co2_annmean_mlo.txt"
 CO2mean <-  read_table(url, skip = 48, col_names = c("Year", "CO2_mean"))
