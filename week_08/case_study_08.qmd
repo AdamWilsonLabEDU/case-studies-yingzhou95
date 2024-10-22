@@ -12,7 +12,7 @@ library(dplyr)
 library(ggplot2)
 
 url <- "ftp://aftp.cmdl.noaa.gov/products/trends/co2/co2_annmean_mlo.txt"
-CO2mean <-  read_table(url, skip = 48, col_names = c("Year", "CO2_mean"))
+CO2mean <-  read_table(url, skip = 48  , col_names = c("Year", "CO2_mean"))
 View(CO2mean)
 
 ggplot(CO2mean, aes(Year, CO2_mean)) +
@@ -23,20 +23,21 @@ ggplot(CO2mean, aes(Year, CO2_mean)) +
 ## Top Five Annual Mean Carbon Dioxide Concentrations at Mona Loa
 
 ```{r}
+#install.packages("magick")
 library(readr)
 library(dplyr)
 library(knitr)
 library(kableExtra)
 
+
 url <- "ftp://aftp.cmdl.noaa.gov/products/trends/co2/co2_annmean_mlo.txt"
 CO2mean <-  read_table(url, skip = 48, col_names = c("Year", "CO2_mean"))
 View(CO2mean)
 
+                  
 top5_CO2 <- CO2mean %>%
   arrange(desc(CO2_mean)) %>%
-  slice(1:5)
+  slice(1:5) 
 
-top5_CO2 %>% 
-  kable() %>% 
-  as_image(width = 10,file = "top4_CO2.png")
+knitr::kable(top5_CO2)
 ```
