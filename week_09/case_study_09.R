@@ -37,7 +37,7 @@ ggplot() +
                       breaks = c(1,10,100,1000)) +
   coord_sf(ylim = region[c(2,4)], xlim = region[c(1,3)]) +
   labs(x = NULL, y = NULL) +
-  facet_wrap(~decade, nrow = 2)
+  facet_wrap(~decade)
 
 # Calculate table of the five states with most storms.
 states <- us_states %>%

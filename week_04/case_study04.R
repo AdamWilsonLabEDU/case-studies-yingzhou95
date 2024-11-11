@@ -5,11 +5,11 @@ library(nycflights13)
 library(maps)
 
 # look at contents of each table in the dataset
-view(airlines)
+#view(airlines)
 view(airports)
 view(flights)
-view(planes)
-view(weather)
+#view(planes)
+#view(weather)
 
 # find the destination airport farthest from any of the NYC airports
 farthest_airport <- flights %>% 
@@ -22,7 +22,21 @@ farthest_airport <- flights %>%
 
 view(farthest_airport)
 
-## `summarise()` has grouped output by 'name', 'lat'. You can override using the
-## `.groups` argument.
+# calculate mean value of delay time by destinantion
+delay_mean_bydest <- flights %>%
+  left_join(airports, by = c("dest" = "faa")) %>%
+  group_by(name, lat, lon) %>%
+  summarize(mean_delays = mean(arr_delay, na.rm = TRUE))
 
+view(delay_mean_bydest)
+
+# create the map
+ggplot(delay_mean_bydest, aes(lon, lat)) +
+  borders("state") +
+  geom_point(aes(color = mean_delays)) +
+  scale_color_gradient2(low = "blue", mid = "white", high = "red",
+                        midpoint = 0,
+                        name = "Mean Delay (minutes)") +
+  coord_quickmap() +
+  labs(x = "lon", y = "lat")
 

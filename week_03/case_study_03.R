@@ -1,4 +1,3 @@
-
 # load packages
 # install.packages("gapminder")
 library(ggplot2)
