@@ -30,5 +30,3 @@ summary(iris)
 # summary by using str()
 str(iris)
 
-
-
