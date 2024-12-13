@@ -45,15 +45,15 @@ library(ncdf4) # to import data from netcdf format
 #' ## Land Use Land Cover
 #' 
 ## ----eval=F, warning=F--------------------------------------------------------
-## # Create afolder to hold the downloaded data
-## dir.create("data",showWarnings = F) #create a folder to hold the data
-## 
-## lulc_url="https://github.com/adammwilson/DataScienceData/blob/master/inst/extdata/appeears/MCD12Q1.051_aid0001.nc?raw=true"
-## lst_url="https://github.com/adammwilson/DataScienceData/blob/master/inst/extdata/appeears/MOD11A2.006_aid0001.nc?raw=true"
-## 
-## # download them
-## download.file(lulc_url,destfile="data/MCD12Q1.051_aid0001.nc", mode="wb")
-## download.file(lst_url,destfile="data/MOD11A2.006_aid0001.nc", mode="wb")
+# Create afolder to hold the downloaded data
+dir.create("data",showWarnings = F) #create a folder to hold the data
+
+lulc_url="https://github.com/adammwilson/DataScienceData/blob/master/inst/extdata/appeears/MCD12Q1.051_aid0001.nc?raw=true"
+lst_url="https://github.com/adammwilson/DataScienceData/blob/master/inst/extdata/appeears/MOD11A2.006_aid0001.nc?raw=true"
+
+# download them
+download.file(lulc_url,destfile="data/MCD12Q1.051_aid0001.nc", mode="wb")
+download.file(lst_url,destfile="data/MOD11A2.006_aid0001.nc", mode="wb")
 
 #' 
 #' 
@@ -132,8 +132,8 @@ kable(head(lcd))
 lulc=as.factor(lulc)
 
 # update the RAT with a left join
-#levels(lulc)=left_join(levels(lulc)[[1]],lcd)[-1,]
-#activeCat(lulc)=1
+levels(lulc)=left_join(levels(lulc)[[1]],lcd)[-1,]
+activeCat(lulc)=1
 
 
 #' 
@@ -148,7 +148,16 @@ lulc=as.factor(lulc)
 ## -----------------------------------------------------------------------------
 scoff(lst)=cbind(0.02,-273.15)
 plot(lst[[1:10]])
-
+# plot it
+gplot(lulc)+
+  geom_raster(aes(fill=as.factor(value)))+
+  scale_fill_manual(values=setNames(lcd$col,lcd$ID),
+                    labels=lcd$landcover,
+                    breaks=lcd$ID,
+                    name="Landcover Type")+
+  coord_equal()+
+  theme(legend.position = "right")+
+  guides(fill=guide_legend(ncol=1,byrow=TRUE))
 #' 
 #' 
 #' <div class="well">
@@ -171,8 +180,15 @@ plot(lst[[1:10]])
 #' 
 #' QC data are encoded in 8-bit 'words' to compress information.
 #' 
+lstqc=rast("data/MOD11A2.006_aid0001.nc",subds="QC_Day")
+plot(lstqc[[1:2]])
+values(lstqc[[1:2]])%>%table()
+intToBits(65)
+intToBits(65)[1:8]
+as.integer(intToBits(65)[1:8])
+rev(as.integer(intToBits(65)[1:8]))
 
-#' 
+
 
 #' #### MODIS QC data are _Big Endian_
 #' 
@@ -193,14 +209,57 @@ plot(lst[[1:10]])
 #' * Average LST error <= 2K
 #' 
 #' ### Filter the the lst data using the QC data
-#' 
+#' set up data frame to hold all combinations
+QC_Data <- data.frame(Integer_Value = 0:255,
+                      Bit7 = NA, Bit6 = NA, Bit5 = NA, Bit4 = NA,
+                      Bit3 = NA, Bit2 = NA, Bit1 = NA, Bit0 = NA,
+                      QA_word1 = NA, QA_word2 = NA, QA_word3 = NA,
+                      QA_word4 = NA)
+
+for(i in QC_Data$Integer_Value){
+  AsInt <- as.integer(intToBits(i)[1:8])
+  QC_Data[i+1,2:9]<- AsInt[8:1]
+}
+
+QC_Data$QA_word1[QC_Data$Bit1 == 0 & QC_Data$Bit0==0] <- "LST GOOD"
+QC_Data$QA_word1[QC_Data$Bit1 == 0 & QC_Data$Bit0==1] <- "LST Produced,Other Quality"
+QC_Data$QA_word1[QC_Data$Bit1 == 1 & QC_Data$Bit0==0] <- "No Pixel,clouds"
+QC_Data$QA_word1[QC_Data$Bit1 == 1 & QC_Data$Bit0==1] <- "No Pixel, Other QA"
+
+QC_Data$QA_word2[QC_Data$Bit3 == 0 & QC_Data$Bit2==0] <- "Good Data"
+QC_Data$QA_word2[QC_Data$Bit3 == 0 & QC_Data$Bit2==1] <- "Other Quality"
+QC_Data$QA_word2[QC_Data$Bit3 == 1 & QC_Data$Bit2==0] <- "TBD"
+QC_Data$QA_word2[QC_Data$Bit3 == 1 & QC_Data$Bit2==1] <- "TBD"
+
+QC_Data$QA_word3[QC_Data$Bit5 == 0 & QC_Data$Bit4==0] <- "Emiss Error <= .01"
+QC_Data$QA_word3[QC_Data$Bit5 == 0 & QC_Data$Bit4==1] <- "Emiss Err >.01 <=.02"
+QC_Data$QA_word3[QC_Data$Bit5 == 1 & QC_Data$Bit4==0] <- "Emiss Err >.02 <=.04"
+QC_Data$QA_word3[QC_Data$Bit5 == 1 & QC_Data$Bit4==1] <- "Emiss Err > .04"
+
+QC_Data$QA_word4[QC_Data$Bit7 == 0 & QC_Data$Bit6==0] <- "LST Err <= 1"
+QC_Data$QA_word4[QC_Data$Bit7 == 0 & QC_Data$Bit6==1] <- "LST Err > 2 LST Err <= 3"
+QC_Data$QA_word4[QC_Data$Bit7 == 1 & QC_Data$Bit6==0] <- "LST Err > 1 LST Err <= 2"
+QC_Data$QA_word4[QC_Data$Bit7 == 1 & QC_Data$Bit6==1] <- "LST Err > 4"
+kable(head(QC_Data))
 
 #' 
 #' ### Select which QC Levels to keep
+keep=QC_Data[QC_Data$Bit1 == 0,]
+keepvals=unique(keep$Integer_Value)
+keepvals
+
 
 #' 
 #' ### How many observations will be dropped?
 #' 
+qcvals=table(values(lstqc)) 
+
+QC_Data%>%
+  dplyr::select(everything(),-contains("Bit"))%>%
+  mutate(Var1=as.character(Integer_Value),
+         keep=Integer_Value%in%keepvals)%>%
+  inner_join(data.frame(qcvals))%>%
+  kable()
 
 #' 
 #' Do you want to update the values you are keeping?
@@ -210,14 +269,22 @@ plot(lst[[1:10]])
 #' These steps take a couple minutes.  
 #' 
 #' Make logical flag to use for mask
-
+lstkeep=app(lstqc,
+            function(x) x%in%keepvals)
 #' 
 #' Plot the mask
+gplot(lstkeep[[4:8]])+
+  geom_raster(aes(fill=as.factor(value)))+
+  facet_grid(variable~.)+
+  scale_fill_manual(values=c("blue","red"),name="Keep")+
+  coord_equal()+
+  theme(legend.position = "bottom")
+
 
 #' 
 #' 
 #' Mask the lst data using the QC data and overwrite the original data.
-
+lst=mask(lst,mask=lstkeep,maskval=0)
 #' 
 #' </div>
 #' </div>
@@ -232,24 +299,40 @@ plot(lst[[1:10]])
 #' <button data-toggle="collapse" class="btn btn-primary btn-sm round" data-target="#demo2">Show Hints</button>
 #' <div id="demo2" class="collapse">
 #' 
-#' 1. Use `lw= data.frame(x= -78.791547,y=43.007211) %>% st_as_sf(coords=c("x","y"),crs=4326)` to define a new sf point.
+#' 1. Use `
+lw= data.frame(x= -78.791547,y=43.007211) %>% st_as_sf(coords=c("x","y"),crs=4326) # to define a new sf point.
 #' 2. Transform the point to the projection of the raster using `st_transform()`.  You'll need to get the projection of the raster with `st_crs()`.
+lw_projected <- st_transform(lw, crs = st_crs(lst))
 #' 3. Extract the LST data for that location with: `extract(lst,lw,buffer=1000,fun=mean,na.rm=T)`.  You may want to transpose them with `t()` to convert it from a wide matrix to long vector. You may also need to drop the first column with `[-1]` becauase the first column is the ID.
+lw_lst <- terra::extract(lst,lw_projected,buffer=1000,fun=mean,na.rm=T)
+
+lw_lst_clear <- t(lw_lst)[-1]
+
 #' 4. Extract the dates for each layer with `time(lst)`
+lst_time <- time(lst)
 #' 5. Combine the dates and transposed raster values into a data.frame.  You could use `data.frame()`, `cbind.data.frame()` or `bind_cols()` to do this. The goal is to make a single dataframe with the dates and lst values in columns.
+lw_lst_combined <- cbind.data.frame(Date = lst_time, LST = lw_lst_clear)
 #' 5. Plot it with `ggplot()` including points for the raw data and a smooth version as a line.  You will probably want to adjust both `span` and `n` in `geom_smooth`.
+ggplot(lw_lst_combined, aes(x = Date, y = LST)) +
+  geom_point(color = "black") +
+  geom_smooth(span = 0.01, color = "blue") +  # Smoothed line
+  labs(title = "LST Data Over Time", x = "Date", y = "LST") 
+
 #' 
 #' </div>
 #' </div>
-#' 
-#' Your graph should look like this:
+
 
 #' 
 #' See the `library(rts)` for more timeseries related functions.
-#' 
+# install.packages("rts")
+library(rts)
 #' 
 #' # Part 2: Summarize weekly data to monthly climatologies
-#' 
+month_index <- format(lst_time, "%m")
+lst_month <- tapp(lst, index = month_index, fun = mean, na.rm = TRUE)
+
+
 #' Now we will use a function called `stackApply()` to calculate monthly mean land surface temperature.
 #' 
 #' <div class="well">
@@ -260,8 +343,17 @@ plot(lst[[1:10]])
 #' 
 #' 1. Use `tapp()` to summarize the mean value per month (using `index='month'`) and save the results as `lst_month`.
 #' 2. Set the names of the layers to months with `names(lst_month)=month.name[as.numeric(str_replace(names(lst_month),"m_",""))]`. This will convert `m_01` to `January`, etc.
+library(stringr)
+names(lst_month)=month.name[as.numeric(str_replace(names(lst_month), "X", ""))]
+
 #' 3. Plot the map for each month with `gplot()` in the RasterVis Package.
+gplot(lst_month) + 
+  geom_tile(aes(fill = value)) + 
+  facet_wrap(~ variable, ncol = 3) + 
+  labs(title = "Monthly Mean Land Surface Temperature") +
+  theme(strip.text = element_text(size = 10))
 #' 4. Calculate the monthly mean for the entire image with `global(lst_month,mean,na.rm=T)`
+mean_lst_month <- global(lst_month,mean,na.rm=T)
 #' 
 #' </div>
 #' </div>
@@ -282,16 +374,18 @@ plot(lst[[1:10]])
 #' <button data-toggle="collapse" class="btn btn-primary btn-sm round" data-target="#demo4">Show Hints</button>
 #' <div id="demo4" class="collapse">
 #' 
-#' 1. Resample `lulc` to `lst` grid using `resample()` with `method=near` to create a new object called lulc2.
-#' 2. Extract the values from `lst_month` and `lulc2` into a data.frame as follows:
-#'    ``` 
-#'    lcds1=cbind.data.frame(
-#'    values(lst_month),
-#'    ID=values(lulc2[[1]]))%>%
-#'    na.omit()
-#'    ```
-#' 3. Gather the data into a 'tidy' format using `gather(key='month',value='value',-Land_Cover_Type_1_13)`. 
-#' 4. Use `mutate()` to convert ID to numeric (e.g. `ID=as.numeric(Land_Cover_Type_1_13)` and month to an _ordered_ factor with `month=factor(month,levels=month.name,ordered=T)`.
+#' 1. Use `tapp()` to summarize the mean value per month (using `index='month'`) and save the results as `lst_month`.
+#' 2. Set the names of the layers to months with `names(lst_month)=month.name[as.numeric(str_replace(names(lst_month),"m_",""))]`. This will convert `m_01` to `January`, etc.
+names(lst_month)=month.name[as.numeric(str_replace(names(lst_month),"X",""))]
+#' 3. Plot the map for each month with `gplot()` in the RasterVis Package.
+gplot(lst_month) + 
+  geom_tile(aes(fill = value)) + 
+  facet_wrap(~ variable, ncol = 3) +  # Adjust the number of columns as needed
+  labs(title = "Monthly Mean Land Surface Temperature") +
+  theme_minimal() +
+  theme(strip.text = element_text(size = 10))
+#' 4. Calculate the monthly mean for the entire image with `global(lst_month,mean,na.rm=T)`
+mean_lst_month <- global(lst_month,mean,na.rm=T)
 #' 5. do a left join with the `lcd` table you created at the beginning.
 #' 6. Use `filter()` to keep only `landcover%in%c("Urban & built-up","Deciduous Broadleaf forest")`
 #' 7. Develop a ggplot to illustrate the monthly variability in LST between the two land cover types.  The exact form of plot is up to you.  Experiment with different geometries, etc.
