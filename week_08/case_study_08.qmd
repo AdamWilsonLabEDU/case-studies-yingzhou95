@@ -1,0 +1,43 @@
+---
+title: "Carbon Dioxide Concentrations at Mona Loa Observatory"
+author: "Ying Zhou"
+html: default
+---
+
+## Annual Mean Carbon Dioxide Concentrations 1959-Present
+
+```{r}
+library(readr)
+library(dplyr)
+library(ggplot2)
+
+url <- "ftp://aftp.cmdl.noaa.gov/products/trends/co2/co2_annmean_mlo.txt"
+CO2mean <-  read_table(url, skip = 48  , col_names = c("Year", "CO2_mean"))
+View(CO2mean)
+
+ggplot(CO2mean, aes(Year, CO2_mean)) +
+  geom_line(color = "red") +
+  labs(x = "Year", y = "Mauna Loa CO_2 annual Mean (ppm)")
+```
+
+## Top Five Annual Mean Carbon Dioxide Concentrations at Mona Loa
+
+```{r}
+#install.packages("magick")
+library(readr)
+library(dplyr)
+library(knitr)
+library(kableExtra)
+
+
+url <- "ftp://aftp.cmdl.noaa.gov/products/trends/co2/co2_annmean_mlo.txt"
+CO2mean <-  read_table(url, skip = 48, col_names = c("Year", "CO2_mean"))
+View(CO2mean)
+
+                  
+top5_CO2 <- CO2mean %>%
+  arrange(desc(CO2_mean)) %>%
+  slice(1:5) 
+
+knitr::kable(top5_CO2)
+```
